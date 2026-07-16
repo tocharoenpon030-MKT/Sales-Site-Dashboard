@@ -547,7 +547,7 @@ function renderForecast(rows) {
       else if (a <= 10) cls = "fc-yellow";
       else cls = "fc-green";
       bodyHtml += `<td class="fc-cell ${cls}">
-        <b>${a}</b><span style="font-weight:700;text-decoration:underline;">งานทั้งหมด</span>
+        <b style="text-decoration:underline;">${a}</b><span style="font-weight:700;text-decoration:underline;">งานทั้งหมด</span>
         <br>${still} ยังทำงาน
         <br>${ended} จบแล้ว
       </td>`;
