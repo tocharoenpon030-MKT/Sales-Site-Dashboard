@@ -60,11 +60,11 @@
   .fc-month-label{padding:6px 4px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;background:#F5F1E4;}
   .fc-name-col{padding:8px 10px;text-align:left;font-size:13px;font-weight:600;white-space:nowrap;background:#fff;}
   .fc-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;}
-  .fc-cell{height:30px;width:58px;}
-  .fc-cell.active{background:var(--rebar);}
-  .fc-cell.none{background:var(--cream);}
-  .fc-cell.warn{background:var(--orange);position:relative;color:#fff;font-size:12px;}
-  .fc-warn-row td{border:none;text-align:left;font-size:11.5px;color:#B04A00;background:#FFF8EF;padding:3px 10px 12px;}
+  .fc-cell{min-width:72px;padding:6px 4px;line-height:1.5;font-size:10.5px;color:#fff;}
+  .fc-cell b{display:block;font-size:14px;font-family:'Consolas',monospace;}
+  .fc-cell.fc-red{background:#C0392B;}
+  .fc-cell.fc-yellow{background:#D9A428;color:#3A2B00;}
+  .fc-cell.fc-green{background:var(--rebar);}
   .fc-empty{padding:30px;text-align:center;color:var(--concrete);font-size:13px;}
 </style>
 </head>
@@ -151,9 +151,9 @@
           </table>
         </div>
         <div class="legend" style="margin-top:14px;">
-          <span><span class="swatch" style="background:var(--rebar)"></span>งานยังเดินอยู่</span>
-          <span><span class="swatch" style="background:var(--cream);border:1px solid #ddd;"></span>ไม่มีงาน</span>
-          <span><span class="swatch" style="background:var(--orange)"></span>ควรเฝ้าระวัง / หาลูกค้าเพิ่ม</span>
+          <span><span class="swatch" style="background:#C0392B"></span>0-3 งาน — ควรหาลูกค้าเพิ่ม</span>
+          <span><span class="swatch" style="background:#D9A428"></span>4-10 งาน — เฝ้าระวัง</span>
+          <span><span class="swatch" style="background:var(--rebar)"></span>11+ งาน — ปลอดภัย</span>
         </div>
       </div>
     </div>
@@ -170,7 +170,7 @@
 /* =========================================================
    ตั้งค่า — แก้ 2 บรรทัดนี้หลัง deploy Apps Script เสร็จ
    ========================================================= */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz2Kjx0p5oO0THPnIPaCRmG6ME5E7BgcLT_oYuac7LJhXIb90p_kZYfq9TIhR3IzKbIPg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygFzwASZoaVH7BDAkNJC1Bgq7d3_AxZ0Fl1pZLJ2HlZ3tsL4spXnqF4jqsbrVtPmkHWQ/exec";
 const API_KEY = "1294";
 /* ========================================================= */
 
@@ -254,9 +254,28 @@ function groupLabel() {
   return selectedBranch === "all" ? "สาขา" : "ชื่อเซล";
 }
 
+function normalizeProvinceName(v) {
+  if (!v) return "";
+  let s = String(v).trim();
+  s = s.replace(/^จังหวัด\s*/, "");
+  if (["กทม.", "กทม", "กรุงเทพ", "กรุงเทพฯ", "กรุงเทพมหานคร"].includes(s)) s = "กรุงเทพมหานคร";
+  return s;
+}
+
 function matchesProvince(value, target) {
   if (!value) return false;
-  return value === target || value.indexOf(target) >= 0 || target.indexOf(value) >= 0;
+  const v = normalizeProvinceName(value);
+  const t = normalizeProvinceName(target);
+  if (!v || !t) return false;
+  return v === t || v.indexOf(t) >= 0 || t.indexOf(v) >= 0;
+}
+
+function findGeo(value) {
+  const norm = normalizeProvinceName(value);
+  if (!norm) return null;
+  if (PROVINCE_GEO[norm]) return PROVINCE_GEO[norm];
+  const key = Object.keys(PROVINCE_GEO).find(k => norm.indexOf(k) >= 0 || k.indexOf(norm) >= 0);
+  return key ? PROVINCE_GEO[key] : null;
 }
 
 /* ========================= render หลัก ========================= */
@@ -367,7 +386,7 @@ function populateProvinceFilter(rows) {
   const provinces = [...new Set(rows.map(r => r.province).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
   const prevValue = selectedProvince;
   sel.innerHTML = `<option value="__all__">รวมทุกจังหวัด</option>` +
-    provinces.map(p => `<option value="${p}">${p}${PROVINCE_GEO[p] ? "" : " (ไม่มีแผนที่)"}</option>`).join("");
+    provinces.map(p => `<option value="${p}">${p}${findGeo(p) ? "" : " (ไม่มีแผนที่)"}</option>`).join("");
   if (provinces.includes(prevValue) || prevValue === "__all__") {
     sel.value = prevValue;
   } else {
@@ -389,7 +408,7 @@ function renderProvinceSection(rows) {
     return;
   }
 
-  const geo = PROVINCE_GEO[selectedProvince];
+  const geo = findGeo(selectedProvince);
   const provRows = rows.filter(r => matchesProvince(r.province, selectedProvince));
 
   if (geo) {
@@ -522,21 +541,21 @@ function renderForecast(rows) {
   entities.forEach((e, ei) => {
     const color = REP_PALETTE[ei % REP_PALETTE.length];
     bodyHtml += `<tr><td class="fc-name-col"><span class="fc-dot" style="background:${color}"></span>${e}</td>`;
-    const warnParts = [];
     months.forEach((m, mi) => {
       const a = activeMap[e][mi];
-      let cls = "active";
-      if (a === 0) { cls = "none"; }
-      else if (a === 1) { cls = "warn"; }
-      if (a <= 1) warnParts.push(monthLabel(m) + (a === 0 ? " (ไม่มีงาน)" : " (เหลือ 1 งาน)"));
-      bodyHtml += `<td class="fc-cell ${cls}">${cls==="warn" ? "▲" : ""}</td>`;
+      const ended = endedMap[e][mi];
+      const still = a - ended;
+      let cls;
+      if (a <= 3) cls = "fc-red";
+      else if (a <= 10) cls = "fc-yellow";
+      else cls = "fc-green";
+      bodyHtml += `<td class="fc-cell ${cls}">
+        <b>${a}</b>ทั้งหมด
+        <br>${still} ยังทำงาน
+        <br>${ended} จบแล้ว
+      </td>`;
     });
     bodyHtml += `</tr>`;
-    if (warnParts.length > 0) {
-      bodyHtml += `<tr class="fc-warn-row"><td colspan="${months.length+1}">
-        ⚠ ควรหาลูกค้าเพิ่มก่อนเดือน ${warnParts.join(", ")} — งาน active เหลือ ≤1 รายการ
-      </td></tr>`;
-    }
   });
   fcBody.innerHTML = bodyHtml;
 }
