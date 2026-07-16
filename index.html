@@ -527,8 +527,8 @@ function renderForecast(rows) {
   fcSummaryRow.innerHTML = `<th class="fc-corner"></th>` + months.map((m,mi) => `
     <th class="fc-summary-cell">
       <b style="text-decoration:underline;">${totalActive[mi]}</b><span style="font-weight:700;text-decoration:underline;">งานทั้งหมด</span>
-      <br><span style="color:var(--rebar)">${totalStill[mi]}</span> ยังทำงาน
-      <br><span style="color:var(--orange)">${totalEnded[mi]}</span> จบแล้ว
+      <br><span style="color:var(--rebar)">${totalStill[mi]}</span> ทำงาน
+      <br><span style="color:var(--orange)">${totalEnded[mi]}</span> จบงาน
     </th>`).join("");
 
   fcMonthRow.innerHTML = `<th class="fc-month-label fc-name-col" style="text-align:left;">${label}</th>` +
@@ -548,8 +548,8 @@ function renderForecast(rows) {
       else cls = "fc-green";
       bodyHtml += `<td class="fc-cell ${cls}">
         <b style="text-decoration:underline;">${a}</b><span style="font-weight:700;text-decoration:underline;">งานทั้งหมด</span>
-        <br>${still} ยังทำงาน
-        <br>${ended} จบแล้ว
+        <br>${still} ทำงาน
+        <br>${ended} จบงาน
       </td>`;
     });
     bodyHtml += `</tr>`;
