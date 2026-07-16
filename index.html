@@ -32,6 +32,9 @@
   .section-label .line{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--concrete) 0 6px,transparent 6px 10px);}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
+  @media (max-width:768px){
+    .grid2, .grid3{grid-template-columns:1fr;}
+  }
   .panel{background:#fff;border:1px solid #e2ddc9;padding:16px;}
   .chart-box{position:relative;width:100%;}
   .map-panel{background:var(--lightblue);border:1px solid var(--blueline);padding:16px;}
@@ -58,7 +61,8 @@
   .fc-summary-cell{font-size:10px;line-height:1.6;color:var(--concrete);padding:6px 4px;min-width:58px;font-weight:400;}
   .fc-summary-cell b{color:var(--navy);display:block;font-size:13px;font-family:'Consolas',monospace;}
   .fc-month-label{padding:6px 4px;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;background:#F5F1E4;}
-  .fc-name-col{padding:8px 10px;text-align:left;font-size:13px;font-weight:600;white-space:nowrap;background:#fff;}
+  .fc-name-col{padding:8px 10px;text-align:left;font-size:13px;font-weight:600;white-space:nowrap;background:#fff;position:sticky;left:0;z-index:2;box-shadow:2px 0 4px rgba(0,0,0,0.06);}
+  .fc-corner{position:sticky;left:0;z-index:3;background:#fff;}
   .fc-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;}
   .fc-cell{min-width:72px;padding:6px 4px;line-height:1.5;font-size:10.5px;color:#fff;}
   .fc-cell b{display:block;font-size:14px;font-family:'Consolas',monospace;}
@@ -188,7 +192,7 @@ const REP_PALETTE = [ORANGE, BLUE, REBAR, PINK, GOLD, "#C0392B", "#16697A", "#7A
 
 let ROWS = [];
 let selectedBranch = "all";
-let selectedProvince = "__all__";
+let selectedProvince = "กรุงเทพมหานคร";
 const chartRegistry = {};
 
 async function loadData() {
@@ -385,13 +389,13 @@ function populateProvinceFilter(rows) {
   const sel = document.getElementById("provinceFilter");
   const provinces = [...new Set(rows.map(r => r.province).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"th"));
   const prevValue = selectedProvince;
-  sel.innerHTML = `<option value="__all__">รวมทุกจังหวัด</option>` +
-    provinces.map(p => `<option value="${p}">${p}${findGeo(p) ? "" : " (ไม่มีแผนที่)"}</option>`).join("");
-  if (provinces.includes(prevValue) || prevValue === "__all__") {
+  sel.innerHTML = provinces.map(p => `<option value="${p}">${p}${findGeo(p) ? "" : " (ไม่มีแผนที่)"}</option>`).join("");
+  if (provinces.includes(prevValue)) {
     sel.value = prevValue;
   } else {
-    selectedProvince = "__all__";
-    sel.value = "__all__";
+    const bkk = provinces.find(p => normalizeProvinceName(p) === "กรุงเทพมหานคร");
+    selectedProvince = bkk || provinces[0] || "";
+    sel.value = selectedProvince;
   }
   sel.onchange = () => { selectedProvince = sel.value; renderProvinceSection(getRows()); };
 }
@@ -400,13 +404,6 @@ function renderProvinceSection(rows) {
   populateProvinceFilter(rows);
   const mapWrap = document.getElementById("provinceMapWrap");
   const fallbackWrap = document.getElementById("provinceFallbackWrap");
-
-  if (selectedProvince === "__all__") {
-    mapWrap.style.display = "none";
-    fallbackWrap.style.display = "block";
-    renderFallbackChart(rows, null);
-    return;
-  }
 
   const geo = findGeo(selectedProvince);
   const provRows = rows.filter(r => matchesProvince(r.province, selectedProvince));
@@ -527,14 +524,14 @@ function renderForecast(rows) {
   const totalEnded = months.map((m, mi) => entities.reduce((s,e)=>s+endedMap[e][mi],0));
   const totalStill = months.map((_, mi) => totalActive[mi] - totalEnded[mi]);
 
-  fcSummaryRow.innerHTML = `<th></th>` + months.map((m,mi) => `
+  fcSummaryRow.innerHTML = `<th class="fc-corner"></th>` + months.map((m,mi) => `
     <th class="fc-summary-cell">
-      <b>${totalActive[mi]}</b>ทั้งหมด
+      <b>${totalActive[mi]}</b>งานทั้งหมด
       <br><span style="color:var(--rebar)">${totalStill[mi]}</span> ยังทำงาน
       <br><span style="color:var(--orange)">${totalEnded[mi]}</span> จบแล้ว
     </th>`).join("");
 
-  fcMonthRow.innerHTML = `<th class="fc-month-label" style="text-align:left;">${label}</th>` +
+  fcMonthRow.innerHTML = `<th class="fc-month-label fc-name-col" style="text-align:left;">${label}</th>` +
     months.map(m => `<th class="fc-month-label">${monthLabel(m)}</th>`).join("");
 
   let bodyHtml = "";
@@ -550,7 +547,7 @@ function renderForecast(rows) {
       else if (a <= 10) cls = "fc-yellow";
       else cls = "fc-green";
       bodyHtml += `<td class="fc-cell ${cls}">
-        <b>${a}</b>ทั้งหมด
+        <b>${a}</b>งานทั้งหมด
         <br>${still} ยังทำงาน
         <br>${ended} จบแล้ว
       </td>`;
