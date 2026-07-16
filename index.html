@@ -339,7 +339,7 @@ function renderSalesTable(rows) {
   const entries = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
 
   document.getElementById("salesTableHead").innerHTML =
-    `<th>${label}</th><th class="num">จำนวนหน้างาน</th><th class="num">มูลค่า (ลบ.)</th>`;
+    `<th>${label}</th><th class="num">จำนวนหน้างาน</th><th class="num">มูลค่า (ล้านบาท)</th>`;
 
   if (entries.length === 0) {
     document.getElementById("salesTableBody").innerHTML =
@@ -371,7 +371,7 @@ function renderRankCharts(rows) {
   makeChart("districtValueChart", {
     type: "bar",
     data: { labels: dvEntries.map(e=>e[0]), datasets: [{ data: dvEntries.map(e=>Math.round(e[1]/1000000*100)/100), backgroundColor: GOLD, borderRadius: 3, maxBarThickness: 18 }] },
-    options: { indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>c.raw.toLocaleString("th-TH")+" ลบ."}}}, scales:{x:{beginAtZero:true,title:{display:true,text:"ล้านบาท",font:{size:10}}}} }
+    options: { indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>c.raw.toLocaleString("th-TH")+" ล้านบาท "}}}, scales:{x:{beginAtZero:true,title:{display:true,text:"ล้านบาท",font:{size:10}}}} }
   });
 
   const pCounts = groupCount(rows, r => r.province);
