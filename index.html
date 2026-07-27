@@ -38,6 +38,11 @@
   .section-label .idx{font-family:'Consolas',monospace;font-size:12px;color:var(--orange);border:1px solid var(--orange);padding:1px 7px;}
   .section-label h2{font-size:17px;font-weight:700;letter-spacing:.5px;color:var(--navy);margin:0;text-transform:uppercase;}
   .section-label .line{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--concrete) 0 6px,transparent 6px 10px);}
+  .scope-toggle{display:flex;border:1px solid var(--blueline);flex-shrink:0;}
+  .scope-toggle button{background:#fff;border:none;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--blueline);cursor:pointer;font-family:inherit;}
+  .scope-toggle button:not(:last-child){border-right:1px solid var(--blueline);}
+  .scope-toggle button.active{background:var(--navy);color:#EDE7DA;}
+  .scope-note{font-size:11px;color:var(--concrete);margin:-8px 0 14px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
   @media (max-width:768px){
@@ -121,7 +126,13 @@
     </div>
 
     <div class="section">
-      <div class="section-label"><span class="idx">02</span><h2>อันดับเขต / จังหวัด</h2><div class="line"></div></div>
+      <div class="section-label"><span class="idx">02</span><h2>อันดับเขต / จังหวัด</h2><div class="line"></div>
+        <div class="scope-toggle" id="scopeToggle">
+          <button type="button" data-scope="all" class="active">ทั้งหมด</button>
+          <button type="button" data-scope="active">กำลังดำเนินการ</button>
+        </div>
+      </div>
+      <div class="scope-note">* ตัวกรองนี้มีผลกับ "อันดับเขต/จังหวัด" และ "แผนที่ความหนาแน่นหน้างาน" ด้านล่างด้วย</div>
       <div class="grid3">
         <div class="panel">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;">เขต/อำเภอ ที่มีหน้างานมากสุด (top 10)</div>
@@ -209,6 +220,7 @@ const REP_PALETTE = [ORANGE, BLUE, REBAR, PINK, GOLD, "#C0392B", "#16697A", "#7A
 let ROWS = [];
 let selectedBranch = "all";
 let selectedProvince = "กรุงเทพมหานคร";
+let scopeFilter = "all"; // "all" | "active"
 const chartRegistry = {};
 
 async function loadData() {
@@ -262,6 +274,16 @@ function branchSortKey(b) {
   return m ? parseInt(m[1], 10) : 9999;
 }
 
+function isActiveRow(r) {
+  const now = new Date();
+  if (!r.endDate) return false;
+  const end = new Date(r.endDate);
+  if (isNaN(end)) return false;
+  const start = r.startDate ? new Date(r.startDate) : null;
+  if (start && isNaN(start)) return false;
+  return (!start || start <= now) && end >= now;
+}
+
 function getRows() {
   if (selectedBranch === "all") return ROWS;
   return ROWS.filter(r => r.branch === selectedBranch);
@@ -303,10 +325,11 @@ function findGeo(value) {
 function render() {
   populateBranchFilter();
   const rows = getRows();
+  const scopedRows = scopeFilter === "active" ? rows.filter(isActiveRow) : rows;
   renderKPI(rows);
   renderSalesTable(rows);
-  renderRankCharts(rows);
-  renderProvinceSection(rows);
+  renderRankCharts(scopedRows);
+  renderProvinceSection(scopedRows);
   renderForecast(rows);
 }
 
@@ -328,16 +351,7 @@ function populateBranchFilter() {
 /* ========================= KPI ========================= */
 
 function renderKPI(rows) {
-  const now = new Date();
-  const isActive = (r) => {
-    if (!r.endDate) return false;
-    const end = new Date(r.endDate);
-    if (isNaN(end)) return false;
-    const start = r.startDate ? new Date(r.startDate) : null;
-    if (start && isNaN(start)) return false;
-    return (!start || start <= now) && end >= now;
-  };
-  const activeRows = rows.filter(isActive);
+  const activeRows = rows.filter(isActiveRow);
 
   function buildKpis(rowSet) {
     const totalSites = rowSet.length;
@@ -603,6 +617,19 @@ function renderForecast(rows) {
   fcBody.innerHTML = bodyHtml;
 }
 
+function setupScopeToggle() {
+  const toggle = document.getElementById("scopeToggle");
+  if (!toggle) return;
+  toggle.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      scopeFilter = btn.dataset.scope;
+      toggle.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+      render();
+    });
+  });
+}
+
+setupScopeToggle();
 loadData();
 </script>
 </body>
