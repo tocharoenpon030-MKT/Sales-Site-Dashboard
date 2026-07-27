@@ -24,10 +24,15 @@
   .toolbar label{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--concrete);font-weight:600;}
   select.filter-select{background:#fff;border:1px solid var(--blueline);color:var(--navy);padding:7px 10px;font-size:13px;font-family:inherit;min-width:150px;}
   .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:30px;}
+  .kpi-subheading{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--rebar);margin:-14px 0 12px;}
+  .kpi-dot{width:8px;height:8px;border-radius:50%;background:var(--rebar);display:inline-block;}
   .kpi{background:var(--navy);color:#EDE7DA;padding:16px 18px;position:relative;border:1px solid var(--blueline);}
   .kpi .corner{position:absolute;width:8px;height:8px;border-top:2px solid var(--orange);border-left:2px solid var(--orange);top:6px;left:6px;}
   .kpi .val{font-family:'Consolas',monospace;font-size:24px;font-weight:700;}
   .kpi .lbl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#9DB4C9;margin-top:4px;}
+  .kpi.green{background:var(--rebar);border-color:var(--rebar);}
+  .kpi.green .corner{border-top-color:#EDE7DA;border-left-color:#EDE7DA;}
+  .kpi.green .lbl{color:#DCEEC7;}
   .section{margin-bottom:38px;}
   .section-label{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
   .section-label .idx{font-family:'Consolas',monospace;font-size:12px;color:var(--orange);border:1px solid var(--orange);padding:1px 7px;}
@@ -99,6 +104,11 @@
     </div>
 
     <div class="kpi-row" id="kpiRow"></div>
+
+    <div class="kpi-subheading">
+      <span class="kpi-dot"></span>เฉพาะที่กำลังดำเนินการ
+    </div>
+    <div class="kpi-row" id="kpiRowActive"></div>
 
     <div class="section">
       <div class="section-label"><span class="idx">01</span><h2>หน้างานต่อเซล</h2><div class="line"></div></div>
@@ -318,21 +328,47 @@ function populateBranchFilter() {
 /* ========================= KPI ========================= */
 
 function renderKPI(rows) {
-  const totalSites = rows.length;
-  const totalValue = rows.reduce((s, r) => s + (r.value || 0), 0);
-  const salesSet = new Set(rows.map(r => r.sales).filter(Boolean));
-  const provinceSet = new Set(rows.map(r => r.province).filter(Boolean));
-  const kpis = [
-    { label: "หน้างานทั้งหมด", value: totalSites.toLocaleString("th-TH") },
-    { label: "มูลค่ารวม (บาท)", value: totalValue.toLocaleString("th-TH", {maximumFractionDigits:0}) },
-    { label: "เซลที่ดูแล", value: salesSet.size + " คน" },
-    { label: "จังหวัดที่ครอบคลุม", value: provinceSet.size + " จังหวัด" },
-  ];
-  document.getElementById("kpiRow").innerHTML = kpis.map(k => `
+  const now = new Date();
+  const isActive = (r) => {
+    if (!r.endDate) return false;
+    const end = new Date(r.endDate);
+    if (isNaN(end)) return false;
+    const start = r.startDate ? new Date(r.startDate) : null;
+    if (start && isNaN(start)) return false;
+    return (!start || start <= now) && end >= now;
+  };
+  const activeRows = rows.filter(isActive);
+
+  function buildKpis(rowSet) {
+    const totalSites = rowSet.length;
+    const totalValue = rowSet.reduce((s, r) => s + (r.value || 0), 0);
+    const salesSet = new Set(rowSet.map(r => r.sales).filter(Boolean));
+    const provinceSet = new Set(rowSet.map(r => r.province).filter(Boolean));
+    return [
+      { label: "หน้างานทั้งหมด", value: totalSites.toLocaleString("th-TH") },
+      { label: "มูลค่ารวม (บาท)", value: totalValue.toLocaleString("th-TH", {maximumFractionDigits:0}) },
+      { label: "เซลที่ดูแล", value: salesSet.size + " คน" },
+      { label: "จังหวัดที่ครอบคลุม", value: provinceSet.size + " จังหวัด" },
+    ];
+  }
+
+  const allKpis = buildKpis(rows);
+  const activeKpis = buildKpis(activeRows);
+
+  const kpiHtml = allKpis.map(k => `
     <div class="kpi"><div class="corner"></div>
       <div class="val">${k.value}</div>
       <div class="lbl">${k.label}</div>
     </div>`).join("");
+
+  const activeHtml = activeKpis.map(k => `
+    <div class="kpi green"><div class="corner"></div>
+      <div class="val">${k.value}</div>
+      <div class="lbl">${k.label}</div>
+    </div>`).join("");
+
+  document.getElementById("kpiRow").innerHTML = kpiHtml;
+  document.getElementById("kpiRowActive").innerHTML = activeHtml;
 }
 
 /* ========================= หน้างานต่อเซล/สาขา (ตาราง) ========================= */
