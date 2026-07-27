@@ -342,7 +342,9 @@ function renderSalesTable(rows) {
   const label = groupLabel();
   const counts = groupCount(rows, r => r[field]);
   const values = groupSum(rows, r => r[field], r => r.value);
-  const entries = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
+  const entries = field === "branch"
+    ? Object.keys(counts).sort((a,b) => branchSortKey(a) - branchSortKey(b))
+    : Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
 
   document.getElementById("salesTableHead").innerHTML =
     `<th>${label}</th><th class="num">จำนวนหน้างาน</th><th class="num">มูลค่า (ล้านบาท)</th>`;
@@ -494,7 +496,9 @@ function renderForecast(rows) {
 
   const field = groupField();
   const label = groupLabel();
-  const entities = [...new Set(rows.map(r=>r[field]).filter(Boolean))].sort();
+  const entities = field === "branch"
+    ? [...new Set(rows.map(r=>r[field]).filter(Boolean))].sort((a,b) => branchSortKey(a) - branchSortKey(b))
+    : [...new Set(rows.map(r=>r[field]).filter(Boolean))].sort();
 
   const parsed = rows.map(r => ({
     ...r,
