@@ -16,6 +16,9 @@
   header h1{font-size:22px;margin:0;letter-spacing:.5px;color:var(--navy);text-transform:uppercase;}
   header p{margin:4px 0 0;color:var(--concrete);font-size:13px;}
   #lastUpdated{font-size:12px;color:var(--concrete);}
+  .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .data-btn{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#EDE7DA;border:1px solid var(--navy);padding:8px 16px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:background .15s ease,color .15s ease;}
+  .data-btn:hover{background:#EDE7DA;color:var(--navy);}
   .toolbar{display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #e2ddc9;padding:12px 16px;margin-bottom:26px;}
   .toolbar .field{display:flex;align-items:center;gap:8px;}
   .toolbar label{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--concrete);font-weight:600;}
@@ -67,7 +70,7 @@
   .fc-cell{min-width:72px;padding:6px 4px;line-height:1.5;font-size:10.5px;color:#fff;}
   .fc-cell b{display:block;font-size:14px;font-family:'Consolas',monospace;}
   .fc-cell.fc-red{background:#C0392B;}
-  .fc-cell.fc-yellow{background:#D9A428;color:#3A2B00;}
+  .fc-cell.fc-yellow{background:var(--navy);color:#EDE7DA;}
   .fc-cell.fc-green{background:var(--rebar);}
   .fc-empty{padding:30px;text-align:center;color:var(--concrete);font-size:13px;}
 </style>
@@ -79,7 +82,10 @@
       <h1>แดชบอร์ดหน้างาน</h1>
       <p>เชื่อมต่อกับ Google Sheet</p>
     </div>
-    <div id="lastUpdated">กำลังโหลด...</div>
+    <div class="header-right">
+      <a class="data-btn" href="https://docs.google.com/spreadsheets/d/1vqV1VPG6MFMVeV7Xh3BECS-y8UCALYFp4fGhBa9mORI/edit?gid=1605700724#gid=1605700724" target="_blank" rel="noopener noreferrer">DATA ↗</a>
+      <div id="lastUpdated">กำลังโหลด...</div>
+    </div>
   </header>
 
   <div id="status">กำลังดึงข้อมูลจาก Google Sheet...</div>
@@ -156,7 +162,7 @@
         </div>
         <div class="legend" style="margin-top:14px;">
           <span><span class="swatch" style="background:#C0392B"></span>0-3 งาน — ด่วน!หาลูกค้าเพิ่ม</span>
-          <span><span class="swatch" style="background:#D9A428"></span>4-10 งาน — เฝ้าระวัง</span>
+          <span><span class="swatch" style="background:#14233B"></span>4-10 งาน — เฝ้าระวัง</span>
           <span><span class="swatch" style="background:var(--rebar)"></span>11+ งาน — ปลอดภัย</span>
         </div>
       </div>
