@@ -210,6 +210,10 @@
       <div class="photo-note" id="photoNote"></div>
       <div class="panel">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">รายการหน้างานที่ <span style="color:#B03226;">ไม่มีรูป</span> (เรียงจากวันที่เสร็จงานเก่าสุดก่อน)</div>
+        <div class="field" style="margin-bottom:12px;">
+          <label for="photoSalesFilter">เซลที่ดูแล</label>
+          <select id="photoSalesFilter" class="filter-select" style="min-width:260px;"></select>
+        </div>
         <div class="photo-table-wrap">
           <table class="leaderboard">
             <thead><tr>
@@ -668,6 +672,7 @@ function setupScopeToggle() {
 /* ========================= รูปหน้างาน ========================= */
 
 let photoStatusFilter = "all"; // "all" | "ended" | "running"
+let photoSalesFilter = "all";   // "all" หรือชื่อเซล
 
 function photoText(r) { return String(r.photo || "").replace(/\s/g, ""); }
 function hasPhotoRow(r) { return photoText(r) === "มีรูป"; }
@@ -700,7 +705,7 @@ function workState(r, today) {
   return r.endDate < today ? "ended" : "running";
 }
 
-function renderPhotoSection(rows) {
+function renderPhotoSection(branchRows) {
   const kpiEl = document.getElementById("photoKpiRow");
   const noteEl = document.getElementById("photoNote");
   const bodyEl = document.getElementById("photoTableBody");
@@ -715,6 +720,18 @@ function renderPhotoSection(rows) {
   }
 
   const today = todayIso();
+
+  // ตัวเลือกเซล: เฉพาะเซลที่มีหน้างานไม่มีรูป (ตามสาขาที่เลือก) เรียงจากมากไปน้อย
+  const salesCounts = groupCount(branchRows.filter(noPhotoRow), r => r.sales);
+  const salesNames = Object.keys(salesCounts).sort((x, y) => salesCounts[y] - salesCounts[x] || x.localeCompare(y, "th"));
+  if (photoSalesFilter !== "all" && !salesNames.includes(photoSalesFilter)) photoSalesFilter = "all";
+  const salesSel = document.getElementById("photoSalesFilter");
+  salesSel.innerHTML = `<option value="all">ทั้งหมด (${salesNames.length} คน)</option>` +
+    salesNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)} (${salesCounts[n]})</option>`).join("");
+  salesSel.value = photoSalesFilter;
+
+  const rows = photoSalesFilter === "all" ? branchRows : branchRows.filter(r => r.sales === photoSalesFilter);
+
   const withPhoto = rows.filter(hasPhotoRow);
   const noPhoto = rows.filter(noPhotoRow);
   const unspecified = rows.length - withPhoto.length - noPhoto.length;
@@ -771,6 +788,11 @@ function renderPhotoSection(rows) {
 function setupPhotoToggle() {
   const toggle = document.getElementById("photoStatusToggle");
   if (!toggle) return;
+  const salesSel = document.getElementById("photoSalesFilter");
+  if (salesSel) salesSel.addEventListener("change", () => {
+    photoSalesFilter = salesSel.value;
+    renderPhotoSection(getRows());
+  });
   toggle.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       photoStatusFilter = btn.dataset.status;
