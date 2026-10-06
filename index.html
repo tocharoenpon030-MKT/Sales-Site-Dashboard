@@ -83,6 +83,15 @@
   .fc-cell.fc-yellow{background:var(--navy);color:#EDE7DA;}
   .fc-cell.fc-green{background:var(--rebar);}
   .fc-empty{padding:30px;text-align:center;color:var(--concrete);font-size:13px;}
+
+  /* รูปหน้างาน */
+  .photo-table-wrap{max-height:520px;overflow:auto;}
+  table.leaderboard thead th{position:sticky;top:0;background:#fff;z-index:1;}
+  .pill{display:inline-block;padding:2px 8px;font-size:11px;font-weight:700;border-radius:2px;white-space:nowrap;}
+  .pill.ended{background:#FBE3DF;color:#B03226;}
+  .pill.running{background:#FFF0DC;color:#B04A00;}
+  .pill.unknown{background:#eee;color:var(--concrete);}
+  .photo-note{font-size:12px;color:var(--concrete);margin:0 0 12px;}
 </style>
 </head>
 <body>
@@ -189,6 +198,30 @@
       </div>
     </div>
 
+    <div class="section" id="photoSection">
+      <div class="section-label"><span class="idx">05</span><h2>รูปหน้างาน</h2><div class="line"></div>
+        <div class="scope-toggle" id="photoStatusToggle">
+          <button type="button" data-status="all" class="active">ทั้งหมด</button>
+          <button type="button" data-status="ended">จบงานแล้ว</button>
+          <button type="button" data-status="running">ยังไม่จบ</button>
+        </div>
+      </div>
+      <div class="kpi-row" id="photoKpiRow"></div>
+      <div class="photo-note" id="photoNote"></div>
+      <div class="panel">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">รายการหน้างานที่ <span style="color:#B03226;">ไม่มีรูป</span> (เรียงจากวันที่เสร็จงานเก่าสุดก่อน)</div>
+        <div class="photo-table-wrap">
+          <table class="leaderboard">
+            <thead><tr>
+              <th>เซลที่ดูแล</th><th>สาขา</th><th>ลูกค้า</th><th>หน้างาน</th><th>พื้นที่</th>
+              <th>วันที่เสร็จงาน</th><th>สถานะงาน</th>
+            </tr></thead>
+            <tbody id="photoTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <footer>
@@ -201,7 +234,7 @@
 /* =========================================================
    ตั้งค่า — แก้ 2 บรรทัดนี้หลัง deploy Apps Script เสร็จ
    ========================================================= */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMjJtQwqtqALJVV1B2sTx_SrvLVh_2-HqmXGjJgcuRsrjlbh_ZYScaj8LO32eX3ny1yg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGLG2WcdBjvXz0omrQLsDt8bD6QRN8wwv2rOoZWER1uw9wELWKZTV8YKBudMsRwJ0oDw/exec";
 const API_KEY = "1294";
 /* ========================================================= */
 
@@ -331,6 +364,7 @@ function render() {
   renderRankCharts(scopedRows);
   renderProvinceSection(scopedRows);
   renderForecast(rows);
+  renderPhotoSection(rows);
 }
 
 function populateBranchFilter() {
@@ -363,6 +397,8 @@ function renderKPI(rows) {
       { label: "มูลค่ารวม (บาท)", value: totalValue.toLocaleString("th-TH", {maximumFractionDigits:0}) },
       { label: "เซลที่ดูแล", value: salesSet.size + " คน" },
       { label: "จังหวัดที่ครอบคลุม", value: provinceSet.size + " จังหวัด" },
+      { label: "มีรูปหน้างาน", value: rowSet.filter(hasPhotoRow).length.toLocaleString("th-TH") + " งาน" },
+      { label: "ไม่มีรูปหน้างาน", value: rowSet.filter(noPhotoRow).length.toLocaleString("th-TH") + " งาน" },
     ];
   }
 
@@ -629,7 +665,123 @@ function setupScopeToggle() {
   });
 }
 
+/* ========================= รูปหน้างาน ========================= */
+
+let photoStatusFilter = "all"; // "all" | "ended" | "running"
+
+function photoText(r) { return String(r.photo || "").replace(/\s/g, ""); }
+function hasPhotoRow(r) { return photoText(r) === "มีรูป"; }
+function noPhotoRow(r) { return photoText(r) === "ไม่มีรูป"; }
+
+function escHtml(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function todayIso() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function dayDiff(isoA, isoB) { // isoB - isoA เป็นจำนวนวัน
+  const p = s => { const [y,m,d] = s.split("-").map(Number); return Date.UTC(y, m-1, d); };
+  return Math.round((p(isoB) - p(isoA)) / 86400000);
+}
+
+function fmtThaiDate(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "-";
+  const mon = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+  return parseInt(m[3],10) + " " + mon[parseInt(m[2],10)-1] + " " + String(parseInt(m[1],10)+543).slice(-2);
+}
+
+// "ended" = วันที่เสร็จงานน้อยกว่าวันนี้ | "running" = เสร็จงานวันนี้หรืออนาคต | "unknown" = ไม่มีวันที่เสร็จงาน
+function workState(r, today) {
+  if (!r.endDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.endDate)) return "unknown";
+  return r.endDate < today ? "ended" : "running";
+}
+
+function renderPhotoSection(rows) {
+  const kpiEl = document.getElementById("photoKpiRow");
+  const noteEl = document.getElementById("photoNote");
+  const bodyEl = document.getElementById("photoTableBody");
+  if (!kpiEl) return;
+
+  // กรณียังใช้ Apps Script เวอร์ชันเก่า (ไม่มีฟิลด์ photo)
+  if (ROWS.length && !ROWS.some(r => "photo" in r)) {
+    kpiEl.innerHTML = "";
+    noteEl.innerHTML = `<div class="warning-box"><strong>ยังไม่มีข้อมูลรูป</strong> — Apps Script ยังเป็นเวอร์ชันเก่า กรุณาวางโค้ดใหม่แล้ว Deploy แบบ New version</div>`;
+    bodyEl.innerHTML = "";
+    return;
+  }
+
+  const today = todayIso();
+  const withPhoto = rows.filter(hasPhotoRow);
+  const noPhoto = rows.filter(noPhotoRow);
+  const unspecified = rows.length - withPhoto.length - noPhoto.length;
+  const noEnded = noPhoto.filter(r => workState(r, today) === "ended");
+  const noRunning = noPhoto.filter(r => workState(r, today) !== "ended");
+  const pct = rows.length ? Math.round(withPhoto.length / rows.length * 100) : 0;
+
+  const card = (cls, val, lbl) => `<div class="kpi ${cls}"><div class="corner"></div><div class="val">${val}</div><div class="lbl">${lbl}</div></div>`;
+  kpiEl.innerHTML =
+    card("green", withPhoto.length.toLocaleString("th-TH"), "มีรูปหน้างาน") +
+    card("", noPhoto.length.toLocaleString("th-TH"), "ไม่มีรูปหน้างาน") +
+    card("", noEnded.length.toLocaleString("th-TH"), "ไม่มีรูป · จบงานแล้ว") +
+    card("", noRunning.length.toLocaleString("th-TH"), "ไม่มีรูป · ยังไม่จบงาน");
+
+  noteEl.textContent = "มีรูป " + withPhoto.length.toLocaleString("th-TH") + " จาก " + rows.length.toLocaleString("th-TH") +
+    " หน้างาน (" + pct + "%)" + (unspecified > 0 ? " · ยังไม่ระบุสถานะรูป " + unspecified + " งาน" : "") +
+    " · จบงานแล้ว = วันที่เสร็จงานก่อนวันนี้";
+
+  let list = noPhoto.map(r => ({ r, st: workState(r, today) }));
+  if (photoStatusFilter === "ended") list = list.filter(x => x.st === "ended");
+  else if (photoStatusFilter === "running") list = list.filter(x => x.st !== "ended");
+
+  list.sort((a, b) => (a.r.endDate || "9999").localeCompare(b.r.endDate || "9999"));
+
+  if (list.length === 0) {
+    bodyEl.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--concrete);padding:20px;">ไม่พบหน้างานที่ไม่มีรูป</td></tr>`;
+    return;
+  }
+
+  bodyEl.innerHTML = list.map(({ r, st }) => {
+    let pill;
+    if (st === "ended") {
+      const d = dayDiff(r.endDate, today);
+      pill = `<span class="pill ended">จบแล้ว · ${d === 1 ? "เมื่อวาน" : d + " วันที่แล้ว"}</span>`;
+    } else if (st === "running") {
+      const d = dayDiff(today, r.endDate);
+      pill = `<span class="pill running">ยังไม่จบ · ${d === 0 ? "จบวันนี้" : "อีก " + d + " วัน"}</span>`;
+    } else {
+      pill = `<span class="pill unknown">ไม่ระบุวันเสร็จ</span>`;
+    }
+    const area = [r.subdistrict, r.district, normalizeProvinceName(r.province)].filter(Boolean).join(" · ");
+    return `<tr>
+      <td>${escHtml(r.sales) || "-"}</td>
+      <td>${escHtml(r.branch) || "-"}</td>
+      <td>${escHtml(r.customerName) || "-"}</td>
+      <td>${escHtml(r.projectName) || "-"}</td>
+      <td>${escHtml(area) || "-"}</td>
+      <td>${fmtThaiDate(r.endDate)}</td>
+      <td>${pill}</td>
+    </tr>`;
+  }).join("");
+}
+
+function setupPhotoToggle() {
+  const toggle = document.getElementById("photoStatusToggle");
+  if (!toggle) return;
+  toggle.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      photoStatusFilter = btn.dataset.status;
+      toggle.querySelectorAll("button").forEach(b => b.classList.toggle("active", b === btn));
+      renderPhotoSection(getRows());
+    });
+  });
+}
+
 setupScopeToggle();
+setupPhotoToggle();
 loadData();
 </script>
 </body>
